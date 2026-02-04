@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
-import DataTable from "../components/DataTable"; // Önizleme için DataTable'ı kullanacağız
+import DataTable from "../components/DataTable";
 
 const ExcelYukleme = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // UrunListesi'nden gönderilen state'i al
+  // Listeden gönderilen state'i al
   const { columns: expectedColumns, target, pageTitle } = location.state || {};
 
   const [file, setFile] = useState(null);
@@ -15,14 +15,23 @@ const ExcelYukleme = () => {
   const [excelColumns, setExcelColumns] = useState([]);
   const [columnMapping, setColumnMapping] = useState({});
   const [step, setStep] = useState(1); // 1: Dosya Seç, 2: Eşleştirme, 3: Önizleme
+  const [shouldSetStep2, setShouldSetStep2] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Eğer gerekli state bilgisi yoksa, ana sayfaya yönlendir.
   useEffect(() => {
     if (!expectedColumns || !target) {
       console.error("Gerekli bilgiler (sütunlar, hedef sayfa) eksik.");
       navigate("/");
     }
   }, [expectedColumns, target, navigate]);
+
+  useEffect(() => {
+    if (shouldSetStep2 && step !== 2) {
+      setStep(2);
+      setShouldSetStep2(false); // Reset the flag
+    }
+  }, [shouldSetStep2, step]);
+  
 
   const handleFileSelect = (e) => {
     const selectedFile = e.target.files[0];
@@ -54,7 +63,17 @@ const ExcelYukleme = () => {
             mapping[expected.key] = found || "";
           });
           setColumnMapping(mapping);
-          setStep(2); // Eşleştirme adımına geç
+
+          const allMappedAutomatically = expectedColumns.every(
+            (expected) => mapping[expected.key] !== "",
+          );
+
+          if (allMappedAutomatically) {
+            processDataForPreview(selectedFile, mapping);
+            setShouldSetStep2(false); // Don't go to step 2
+          } else {
+            setShouldSetStep2(true); // Indicate we should go to step 2 after columnMapping is applied
+          }
         }
       } catch (error) {
         alert("Dosya okunurken hata oluştu: " + error.message);
@@ -67,14 +86,7 @@ const ExcelYukleme = () => {
     setColumnMapping({ ...columnMapping, [expectedKey]: excelColumn });
   };
 
-  const processToPreview = () => {
-    // Tüm alanlar eşleştirildi mi kontrol et
-    const allMapped = Object.values(columnMapping).every((val) => val !== "");
-    if (!allMapped) {
-      alert("Lütfen tüm sütunları eşleştirin!");
-      return;
-    }
-
+  const processDataForPreview = (fileToProcess, currentColumnMapping) => {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -84,27 +96,40 @@ const ExcelYukleme = () => {
         const sheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(sheet);
 
-        // Veriyi mapping'e göre dönüştür
         const transformedData = jsonData.map((row, index) => {
-          const newRow = { id: index }; // Düzenleme/silme için bir id
+          const newRow = { id: index };
           expectedColumns.forEach((expected) => {
-            const excelColumn = columnMapping[expected.key];
+            const excelColumn = currentColumnMapping[expected.key];
             newRow[expected.key] = row[excelColumn] || "";
           });
           return newRow;
         });
 
         setExcelData(transformedData);
-        setStep(3); // Önizleme adımına geç
+        setStep(3);
       } catch (error) {
         alert("Veri işleme sırasında hata oluştu: " + error.message);
       }
     };
-    reader.readAsArrayBuffer(file);
+    fileToProcess && reader.readAsArrayBuffer(fileToProcess); // Check if fileToProcess exists
+  };
+
+  const processToPreview = () => {
+    // Tüm alanlar eşleştirildi mi kontrol et
+    const allMapped = Object.values(columnMapping).every((val) => val !== "");
+    if (!allMapped) {
+      alert("Lütfen tüm sütunları eşleştirin!");
+      return;
+    }
+    processDataForPreview(file, columnMapping);
   };
 
   const handleSave = () => {
-    // ID'leri kaldırarak veriyi temizle
+    if (isSaving) return; // Prevent double submission
+    setIsSaving(true); // Disable button immediately
+
+    // TODO: API Bağlantısı async await
+    
     const cleanData = excelData.map(({ id, ...rest }) => rest);
     navigate(target, { state: { uploadedData: cleanData } });
   };
@@ -164,12 +189,11 @@ const ExcelYukleme = () => {
               type="file"
               accept=".xlsx, .xls"
               onChange={handleFileSelect}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
             />
           </div>
         ) : (
           <p className="text-green-600 text-sm">
-            {file.name}
             <button
               onClick={() => {
                 setStep(1);
@@ -178,10 +202,11 @@ const ExcelYukleme = () => {
                 setColumnMapping({});
                 setExcelData([]);
               }}
-              className="ml-4 bg-orange-50 hover:bg-orange-100 text-orange-500 font-semibold py-1 px-2 rounded text-xs transition"
+              className="bg-orange-50 hover:bg-orange-100 text-orange-500 font-semibold mr-4 py-1 px-2 rounded text-xs transition"
             >
               Dosyayı Değiştir
             </button>
+            {file.name}
           </p>
         )}
       </div>
@@ -251,8 +276,9 @@ const ExcelYukleme = () => {
             <button
               onClick={handleSave}
               className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded text-sm transition"
+              disabled={isSaving}
             >
-              Listeye Aktar
+              Kaydet
             </button>
           </div>
         </div>

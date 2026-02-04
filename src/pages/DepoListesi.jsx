@@ -1,34 +1,19 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import DataTable from "../components/DataTable";
-import ExcelUploadPage from "../components/ExcelUploadModal";
 import { downloadExcelTemplate } from "../utils/excelTemplate";
+import { useNavigate } from "react-router-dom";
 
-function DepoListesi() {
-  const [data, setData] = useState([
-    {
-      "Depo Adı": "Ana Depo",
-      "Depo Kodu": "D001",
-      "Lokasyon": "İstanbul",
-      "Kapasite": "1000 m²",
-      "Sorumlu": "Ali Yılmaz",
-    },
-    {
-      "Depo Adı": "Şube Depo",
-      "Depo Kodu": "D002",
-      "Lokasyon": "Ankara",
-      "Kapasite": "500 m²",
-      "Sorumlu": "Ayşe Kaya",
-    },
-  ]);
+function DepoListesi({ liste, setListe }) {
+  const navigate = useNavigate();
+
   const [showModal, setShowModal] = useState(false);
-  const [showExcelModal, setShowExcelModal] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
   const [newItem, setNewItem] = useState({
     "Depo Adı": "",
     "Depo Kodu": "",
-    "Lokasyon": "",
-    "Kapasite": "",
-    "Sorumlu": "",
+    Lokasyon: "",
+    Kapasite: "",
+    Sorumlu: "",
   });
 
   const columns = [
@@ -39,9 +24,6 @@ function DepoListesi() {
     { header: "Sorumlu", key: "Sorumlu" },
   ];
 
-  const handleExcelUpload = (uploadedData) => {
-    setData([...data, ...uploadedData]);
-  };
 
   const handleAddItem = () => {
     if (
@@ -52,11 +34,11 @@ function DepoListesi() {
       newItem["Sorumlu"]
     ) {
       if (editingIndex !== null) {
-        const updatedData = [...data];
+        const updatedData = [...liste];
         updatedData[editingIndex] = newItem;
-        setData(updatedData);
+        setListe(updatedData);
       } else {
-        setData([...data, newItem]);
+        setListe([...liste, newItem]);
       }
       resetForm();
       setShowModal(false);
@@ -67,14 +49,14 @@ function DepoListesi() {
 
   const handleEditItem = (index) => {
     setEditingIndex(index);
-    setNewItem(data[index]);
+    setNewItem(liste[index]);
     setShowModal(true);
   };
 
   const handleDeleteItem = (index) => {
     if (window.confirm("Bu depoyu silmek istediğinize emin misiniz?")) {
-      const updatedData = data.filter((_, i) => i !== index);
-      setData(updatedData);
+      const updatedData = liste.filter((_, i) => i !== index);
+      setListe(updatedData);
     }
   };
 
@@ -83,15 +65,25 @@ function DepoListesi() {
     setNewItem({
       "Depo Adı": "",
       "Depo Kodu": "",
-      "Lokasyon": "",
-      "Kapasite": "",
-      "Sorumlu": "",
+      Lokasyon: "",
+      Kapasite: "",
+      Sorumlu: "",
     });
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewItem({ ...newItem, [name]: value });
+  };
+
+  const navigateToExcelUpload = () => {
+    navigate("/excel-yukle", {
+      state: {
+        columns: columns,
+        target: "/depo-liste",
+        pageTitle: "Depo Listesi",
+      },
+    });
   };
 
   return (
@@ -108,7 +100,7 @@ function DepoListesi() {
           ⬇️ Excel Şablonu
         </button>
         <button
-          onClick={() => setShowExcelModal(true)}
+          onClick={navigateToExcelUpload}
           className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded transition"
         >
           📊 Excel Yükle
@@ -172,17 +164,9 @@ function DepoListesi() {
 
       <DataTable
         columns={columns}
-        data={data}
+        data={liste}
         onEdit={handleEditItem}
         onDelete={handleDeleteItem}
-      />
-
-      <ExcelUploadPage
-        isOpen={showExcelModal}
-        onClose={() => setShowExcelModal(false)}
-        onUpload={handleExcelUpload}
-        expectedColumns={columns}
-        pageTitle="Depo Listesi"
       />
     </div>
   );

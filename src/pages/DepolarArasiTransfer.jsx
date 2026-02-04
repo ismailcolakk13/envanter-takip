@@ -1,29 +1,11 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import DataTable from "../components/DataTable";
-import ExcelUploadPage from "../components/ExcelUploadModal";
 import { downloadExcelTemplate } from "../utils/excelTemplate";
 
-function DepolarArasiTransfer() {
-  const [data, setData] = useState([
-    {
-      "Tarih": "2024-01-15",
-      "Ürün Adı": "Laptop",
-      "Transfer Miktarı": "5",
-      "Birim": "Adet",
-      "Kaynak Depo": "Ana Depo",
-      "Hedef Depo": "Şube Depo",
-    },
-    {
-      "Tarih": "2024-01-16",
-      "Ürün Adı": "Mouse",
-      "Transfer Miktarı": "20",
-      "Birim": "Adet",
-      "Kaynak Depo": "Şube Depo",
-      "Hedef Depo": "Ana Depo",
-    },
-  ]);
+function DepolarArasiTransfer({ liste, setListe }) {
+  const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
-  const [showExcelModal, setShowExcelModal] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
   const [newItem, setNewItem] = useState({
     "Tarih": "",
@@ -43,9 +25,6 @@ function DepolarArasiTransfer() {
     { header: "Hedef Depo", key: "Hedef Depo" },
   ];
 
-  const handleExcelUpload = (uploadedData) => {
-    setData([...data, ...uploadedData]);
-  };
 
   const handleAddItem = () => {
     if (
@@ -57,11 +36,11 @@ function DepolarArasiTransfer() {
       newItem["Hedef Depo"]
     ) {
       if (editingIndex !== null) {
-        const updatedData = [...data];
+        const updatedData = [...liste];
         updatedData[editingIndex] = newItem;
-        setData(updatedData);
+        setListe(updatedData);
       } else {
-        setData([...data, newItem]);
+        setListe([...liste, newItem]);
       }
       resetForm();
       setShowModal(false);
@@ -72,14 +51,14 @@ function DepolarArasiTransfer() {
 
   const handleEditItem = (index) => {
     setEditingIndex(index);
-    setNewItem(data[index]);
+    setNewItem(liste[index]);
     setShowModal(true);
   };
 
   const handleDeleteItem = (index) => {
     if (window.confirm("Bu transferi silmek istediğinize emin misiniz?")) {
-      const updatedData = data.filter((_, i) => i !== index);
-      setData(updatedData);
+      const updatedData = liste.filter((_, i) => i !== index);
+      setListe(updatedData);
     }
   };
 
@@ -100,6 +79,16 @@ function DepolarArasiTransfer() {
     setNewItem({ ...newItem, [name]: value });
   };
 
+    const navigateToExcelUpload = () => {
+    navigate("/excel-yukle", {
+      state: {
+        columns: columns,
+        target: "/depolar-arasi-transfer",
+        pageTitle: "Depolar Arası Transfer",
+      },
+    });
+  };
+
   return (
     <div className="container mx-auto">
       <div className="flex justify-between items-center mb-6">
@@ -114,7 +103,7 @@ function DepolarArasiTransfer() {
           ⬇️ Excel Şablonu
         </button>
         <button
-          onClick={() => setShowExcelModal(true)}
+          onClick={navigateToExcelUpload}
           className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded transition"
         >
           📊 Excel Yükle
@@ -178,18 +167,11 @@ function DepolarArasiTransfer() {
 
       <DataTable
         columns={columns}
-        data={data}
+        data={liste}
         onEdit={handleEditItem}
         onDelete={handleDeleteItem}
       />
 
-      <ExcelUploadPage
-        isOpen={showExcelModal}
-        onClose={() => setShowExcelModal(false)}
-        onUpload={handleExcelUpload}
-        expectedColumns={columns}
-        pageTitle="Depolar Arası Transfer"
-      />
     </div>
   );
 }

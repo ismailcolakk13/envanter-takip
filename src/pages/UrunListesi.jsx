@@ -1,61 +1,27 @@
-// src/pages/UrunListesi.js
-import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
 import DataTable from "../components/DataTable";
 import { downloadExcelTemplate } from "../utils/excelTemplate";
 
-function UrunListesi() {
+function UrunListesi({ liste, setListe }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [data, setData] = useState([
-    {
-      "Ürün adı": "Laptop",
-      "Ürün grubu": "Bilgisayar",
-      "Marka": "Dell",
-      "Model": "XPS 13",
-      "Birim": "Adet",
-    },
-    {
-      "Ürün adı": "Monitör",
-      "Ürün grubu": "Bilgisayar",
-      "Marka": "LG",
-      "Model": "27UK850",
-      "Birim": "Adet",
-    },
-    {
-      "Ürün adı": "Klavye",
-      "Ürün grubu": "Aksesuar",
-      "Marka": "Logitech",
-      "Model": "MX Keys",
-      "Birim": "Adet",
-    },
-    {
-      "Ürün adı": "Mouse",
-      "Ürün grubu": "Aksesuar",
-      "Marka": "Razer",
-      "Model": "DeathAdder",
-      "Birim": "Adet",
-    },
-    {
-      "Ürün adı": "Yazıcı",
-      "Ürün grubu": "Ofis",
-      "Marka": "HP",
-      "Model": "M426dw",
-      "Birim": "Adet",
-    },
-  ]);
+  const [hasProcessedUploadedData, setHasProcessedUploadedData] =
+    useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
   const [newProduct, setNewProduct] = useState({
     "Ürün adı": "",
     "Ürün grubu": "",
-    "Marka": "",
-    "Model": "",
-    "Birim": "",
+    Marka: "",
+    Model: "",
+    Birim: "",
   });
 
   const columns = [
+    // TODO: Api den gelmeli ?
     { header: "Ürün Adı", key: "Ürün adı" },
     { header: "Ürün Grubu", key: "Ürün grubu" },
     { header: "Marka", key: "Marka" },
@@ -65,36 +31,41 @@ function UrunListesi() {
 
   // ExcelYukleme sayfasından gelen veriyi işle
   useEffect(() => {
-    if (location.state && location.state.uploadedData) {
-      console.log("UrunListesi: Received uploadedData", location.state.uploadedData); // Debug log
-      setData((prevData) => {
-        console.log("UrunListesi: Current data before update", prevData); // Debug log
-        const newData = [...prevData, ...location.state.uploadedData];
-        console.log("UrunListesi: Data after update", newData); // Debug log
+    if (
+      location.state &&
+      location.state.uploadedData &&
+      !hasProcessedUploadedData
+    ) {
+      console.log(
+        "UrunListesi: Received uploadedData",
+        location.state.uploadedData,
+      );
+      setListe((prevListe) => {
+        const newData = [...prevListe, ...location.state.uploadedData];
+        console.log("UrunListesi: Data after update", newData);
         return newData;
       });
-      // State'i temizle, sayfa yenilendiğinde tekrar eklenmesin
+      setHasProcessedUploadedData(true);
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location, navigate]);
+  }, [location, navigate, hasProcessedUploadedData, setListe]);
 
   const handleAddProduct = () => {
-    if (
-      newProduct["Ürün adı"] &&
-      newProduct["Ürün grubu"] &&
-      newProduct["Marka"] &&
-      newProduct["Model"] &&
-      newProduct["Birim"]
-    ) {
+    const requiredFields = columns.map((col) => col.key);
+    const allFieldsFilled = requiredFields.every(
+      (field) => newProduct[field] && newProduct[field].trim() !== "",
+    );
+
+    if (allFieldsFilled) {
       if (editingIndex !== null) {
-        const updatedData = [...data];
+        const updatedData = [...liste];
         updatedData[editingIndex] = newProduct;
-        setData(updatedData);
+        setListe(updatedData);
       } else {
-        setData([...data, newProduct]);
+        setListe((prevListe) => [...prevListe, { ...newProduct }]);
       }
-      resetForm();
       setShowModal(false);
+      resetForm();
     } else {
       alert("Lütfen tüm alanları doldurunuz!");
     }
@@ -102,26 +73,25 @@ function UrunListesi() {
 
   const handleEditProduct = (index) => {
     setEditingIndex(index);
-    setNewProduct(data[index]);
+    setNewProduct(liste[index]);
     setShowModal(true);
   };
 
   const handleDeleteProduct = (index) => {
     if (window.confirm("Bu ürünü silmek istediğinize emin misiniz?")) {
-      const updatedData = data.filter((_, i) => i !== index);
-      setData(updatedData);
+      const updatedData = liste.filter((_, i) => i !== index);
+      setListe(updatedData);
     }
   };
 
   const resetForm = () => {
     setEditingIndex(null);
-    setNewProduct({
-      "Ürün adı": "",
-      "Ürün grubu": "",
-      "Marka": "",
-      "Model": "",
-      "Birim": "",
-    });
+    setNewProduct(
+      columns.reduce((acc, col) => {
+        acc[col.key] = "";
+        return acc;
+      }, {}),
+    );
   };
 
   const handleInputChange = (e) => {
@@ -137,6 +107,13 @@ function UrunListesi() {
         pageTitle: "Ürün Listesi",
       },
     });
+  };
+
+  const exportToExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(liste);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Ürün Listesi");
+    XLSX.writeFile(wb, "UrunListesi.xlsx");
   };
 
   return (
@@ -178,70 +155,22 @@ function UrunListesi() {
             </h2>
 
             <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Ürün Adı
-                </label>
-                <input
-                  type="text"
-                  name="Ürün adı"
-                  value={newProduct["Ürün adı"]}
-                  onChange={handleInputChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Ürün Grubu
-                </label>
-                <input
-                  type="text"
-                  name="Ürün grubu"
-                  value={newProduct["Ürün grubu"]}
-                  onChange={handleInputChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Marka
-                </label>
-                <input
-                  type="text"
-                  name="Marka"
-                  value={newProduct["Marka"]}
-                  onChange={handleInputChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Model
-                </label>
-                <input
-                  type="text"
-                  name="Model"
-                  value={newProduct["Model"]}
-                  onChange={handleInputChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Birim
-                </label>
-                <input
-                  type="text"
-                  name="Birim"
-                  value={newProduct["Birim"]}
-                  onChange={handleInputChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-blue-500"
-                />
-              </div>
+              {columns.map((col) => {
+                return (
+                  <div key={col.key}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {col.header}
+                    </label>
+                    <input
+                      type="text"
+                      name={col.key}
+                      value={newProduct[col.key]}
+                      onChange={handleInputChange}
+                      className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                );
+              })}
             </div>
 
             <div className="flex gap-3 mt-6">
@@ -265,12 +194,19 @@ function UrunListesi() {
         </div>
       )}
 
-      <DataTable 
-        columns={columns} 
-        data={data}
+      <DataTable
+        columns={columns}
+        data={liste}
         onEdit={handleEditProduct}
         onDelete={handleDeleteProduct}
       />
+
+      <button
+        onClick={exportToExcel}
+        className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded transition mt-6"
+      >
+        📥 Listeyi Excel'e Aktar
+      </button>
     </div>
   );
 }

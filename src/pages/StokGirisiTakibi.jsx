@@ -1,29 +1,11 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import DataTable from "../components/DataTable";
-import ExcelUploadPage from "../components/ExcelUploadModal";
 import { downloadExcelTemplate } from "../utils/excelTemplate";
 
-function StokGirisiTakibi() {
-  const [data, setData] = useState([
-    {
-      "Tarih": "2024-01-15",
-      "Ürün Adı": "Laptop",
-      "Giriş Miktarı": "10",
-      "Birim": "Adet",
-      "Depo": "Ana Depo",
-      "Başvuru No": "GR001",
-    },
-    {
-      "Tarih": "2024-01-16",
-      "Ürün Adı": "Mouse",
-      "Giriş Miktarı": "50",
-      "Birim": "Adet",
-      "Depo": "Şube Depo",
-      "Başvuru No": "GR002",
-    },
-  ]);
+function StokGirisiTakibi({ liste, setListe }) {
+  const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
-  const [showExcelModal, setShowExcelModal] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
   const [newItem, setNewItem] = useState({
     "Tarih": "",
@@ -43,10 +25,6 @@ function StokGirisiTakibi() {
     { header: "Başvuru No", key: "Başvuru No" },
   ];
 
-  const handleExcelUpload = (uploadedData) => {
-    setData([...data, ...uploadedData]);
-  };
-
   const handleAddItem = () => {
     if (
       newItem["Tarih"] &&
@@ -57,11 +35,11 @@ function StokGirisiTakibi() {
       newItem["Başvuru No"]
     ) {
       if (editingIndex !== null) {
-        const updatedData = [...data];
+        const updatedData = [...liste];
         updatedData[editingIndex] = newItem;
-        setData(updatedData);
+        setListe(updatedData);
       } else {
-        setData([...data, newItem]);
+        setListe([...liste, newItem]);
       }
       resetForm();
       setShowModal(false);
@@ -72,14 +50,14 @@ function StokGirisiTakibi() {
 
   const handleEditItem = (index) => {
     setEditingIndex(index);
-    setNewItem(data[index]);
+    setNewItem(liste[index]);
     setShowModal(true);
   };
 
   const handleDeleteItem = (index) => {
     if (window.confirm("Bu girişi silmek istediğinize emin misiniz?")) {
-      const updatedData = data.filter((_, i) => i !== index);
-      setData(updatedData);
+      const updatedData = liste.filter((_, i) => i !== index);
+      setListe(updatedData);
     }
   };
 
@@ -100,6 +78,16 @@ function StokGirisiTakibi() {
     setNewItem({ ...newItem, [name]: value });
   };
 
+    const navigateToExcelUpload = () => {
+    navigate("/excel-yukle", {
+      state: {
+        columns: columns,
+        target: "/stok-giris",
+        pageTitle: "Stok Girişi Takibi",
+      },
+    });
+  };
+
   return (
     <div className="container mx-auto">
       <div className="flex justify-between items-center mb-6">
@@ -114,7 +102,7 @@ function StokGirisiTakibi() {
           ⬇️ Excel Şablonu
         </button>
         <button
-          onClick={() => setShowExcelModal(true)}
+          onClick={navigateToExcelUpload}
           className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded transition"
         >
           📊 Excel Yükle
@@ -178,18 +166,11 @@ function StokGirisiTakibi() {
 
       <DataTable
         columns={columns}
-        data={data}
+        data={liste}
         onEdit={handleEditItem}
         onDelete={handleDeleteItem}
       />
 
-      <ExcelUploadPage
-        isOpen={showExcelModal}
-        onClose={() => setShowExcelModal(false)}
-        onUpload={handleExcelUpload}
-        expectedColumns={columns}
-        pageTitle="Stok Girişi Takibi"
-      />
     </div>
   );
 }
