@@ -23,7 +23,7 @@ const Layout = () => {
           {/* Logo / Uygulama Adı */}
           <div className="flex justify-center py-6">
             <h1 className="text-3xl font-extrabold text-blue-900 tracking-tight">
-              Turkcell
+              Envanter Takip
             </h1>
           </div>
 
