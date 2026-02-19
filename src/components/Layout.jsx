@@ -52,11 +52,11 @@ const Layout = () => {
       </header>
 
       {/* 2. ORTALANMIŞ İÇERİK ALANI */}
-      <main className="flex-grow py-8 px-4 sm:px-6 lg:px-8">
+      <main className="grow py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
           
           {/* İçerik Kartı */}
-          <div className="bg-white overflow-hidden shadow-xl sm:rounded-lg min-h-[600px] border border-gray-100">
+          <div className="bg-white overflow-hidden shadow-xl sm:rounded-lg border border-gray-100">
             {/* Outlet: Sayfalar burada render edilecek */}
             <div className="p-6 sm:p-10">
               <Outlet />
